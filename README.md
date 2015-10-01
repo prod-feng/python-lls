@@ -1,6 +1,6 @@
 # python-lls
 
-This is tool  can retrive all of the related processes, child or parent, of the process that one want to list.
+This is a tool  can retrive all of the related processes, child or parent, of the process that one wants to list.
 
 With user's input of a process id, it will find all the child and parent processes, include processes in the same sessions.
 
