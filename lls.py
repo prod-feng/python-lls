@@ -62,7 +62,7 @@ class ProcInfo(object):
   Module for retrieving pcocess info.
   """
   def __init__(self):
-    self.name = "Proc_TaskStats"
+    self.name = "Proc_Info"
     self.Proc_Info = []
 
     self.sorted_session_list = []
