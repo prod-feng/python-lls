@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #
 ###
-#
+#Feng: Oct 12 2015. Add  Find_Child_Process().
 import struct, socket
 import errno
 import os
@@ -42,7 +42,7 @@ Proc_Stat_Keys=[
               "kstkeip",
               "signal",# Obsolete,  because it does not provide information on real-time signals; use /proc/[pid]/status instead.
               "blocked",# Obsolete
-              "sigignore",# Obsolete
+              "sigignore",# Obsolete 
               "sigcatch",# Obsolete
               "wchan",
               "nswap",
@@ -76,7 +76,7 @@ class ProcInfo(object):
 
   def Find_tgids(self):
       # find all process(thread group) IDs first.
-      self.arr_tgids = [int(tgid) for tgid in os.listdir('/proc') if re.match(r'[0-9]+', tgid)]
+      self.arr_tgids = [int(tgid) for tgid in os.listdir('/proc') if re.match(r'[0-9]+', tgid)] 
 
       # find all the thread IDs
       self.tids = []
@@ -91,17 +91,17 @@ class ProcInfo(object):
          attrs = dict(zip(Proc_Stat_Keys, var))
          self.Proc_Info.append(attrs)
 
-      # sort the list according Session IDs
+      # sort the list according Session IDs     
       sortlist = sorted(self.Proc_Info, key=lambda procs: int(procs["session"]))
 
-      last_session=0
+      last_session=0 
       for proc in sortlist:
       # build simpified proc-session list
       #  or in self.Proc_Info without sorting
          pid=int(proc["pid"])
          ppid=int(proc["ppid"])
          session=int(proc["session"])
-
+         
          if(ppid == 0 or pid == session or session != last_session):
              last_session = session
              self.sorted_session_dict[str(session)] = [[pid,ppid,session]]
@@ -111,8 +111,8 @@ class ProcInfo(object):
              if debug > 0: print "found child processes in session", pid,ppid,session
          else:
              print "found phantom process", pid,ppid,session
-
-  @staticmethod
+             
+  @staticmethod 
   def Get_Proc_stat(tid):
       # find the /proc/[pid]/stat info.
       var = []
@@ -120,7 +120,7 @@ class ProcInfo(object):
         for line in open('/proc/%d/stat' % tid):
             var = var + line.split(" ")
       except IOError:
-        var = []
+        var = []  
       return var
 
   def Find_tids(self, tgid):
@@ -139,7 +139,7 @@ class ProcInfo(object):
           if((session_id) == int(key)):
              found = 1
              if debug >0: print "Found session ",key, exp.sorted_session_dict[key]
-             exp.result_proc_list += exp.sorted_session_dict[key]
+             exp.result_proc_list += exp.sorted_session_dict[key] 
              break
       # Try to find parent process using  PPID, in case PID!=SESSION ID
       if(found < 0):
@@ -150,8 +150,9 @@ class ProcInfo(object):
                 found = 1
                 mykey = str(pidlist[2])
                 if debug >0: print "Found ppid ",process_session_list
-                exp.result_proc_list += process_session_list
+                exp.result_proc_list += process_session_list 
                 break
+          if(found == 1): break
       if (int(mykey)>=0): key = mykey
       # OK, no process
       if(found < 0):
@@ -163,6 +164,25 @@ class ProcInfo(object):
           return
       ProcInfo.Find_Process_Family(exp,ppid)
 
+  @staticmethod
+  def Find_Child_Process(exp,process_id):
+      found = -1
+      for key in exp.sorted_session_dict:
+        process_session_list = exp.sorted_session_dict[key]
+        for pidlist in process_session_list:
+          if(process_id == (pidlist[1])):
+             found = 1
+             mykey = str(pidlist[2])
+             if debug > 0: print "Found child process ",process_session_list
+             exp.result_proc_list += process_session_list
+             break
+        if(found == 1): break 
+      if( debug > 0 and found == 1 and len(process_session_list) > 1):
+         print "Fount children processes ",process_session_list
+      if(found < 0): return
+      pid = process_session_list[1][0]
+      ProcInfo.Find_Child_Process(exp,pid)
+
 if __name__ == '__main__':
    import sys
    process = -1
@@ -171,7 +191,7 @@ if __name__ == '__main__':
       #Find the session ID of this process
       session_id = ProcInfo.Get_Proc_stat(int(process))[5]
       if debug > 0: print "process: ",process, session_id
-
+ 
       found = -1
       #Find session leader process ID
       # Init the process list
@@ -179,9 +199,10 @@ if __name__ == '__main__':
 
       #Search parent processes IDs
       ProcInfo.Find_Process_Family(exp,int(session_id))
+      ProcInfo.Find_Child_Process(exp,int(process))
       proc_list = ""
       for proc in exp.result_proc_list:
          proc_list = proc_list + " "+str(proc[0])
 
-      if debug > 0: print "proc_list ",proc_list
+      if debug >= 0: print "proc_list ",proc_list
       os.system("ps  f -o pid,ppid,sid,pgrp,gid,tid,nice,uname,pcpu,stat,command "+proc_list)
